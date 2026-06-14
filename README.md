@@ -1,6 +1,6 @@
 # Sistema de Gestión de Licitaciones — CSC
 
-MVP desarrollado para la prueba técnica de Consultoría y Soluciones Caballero.
+
 
 ## Despliegue
 
