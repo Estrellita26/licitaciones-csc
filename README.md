@@ -1,7 +1,5 @@
 # Sistema de Gestión de Licitaciones — CSC
 
-MVP desarrollado para la prueba técnica de Consultoría y Soluciones Caballero.
-
 ## Despliegue
 
 - **Frontend:** https://zingy-horse-e5a99c.netlify.app

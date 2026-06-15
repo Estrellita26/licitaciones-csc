@@ -1,167 +1,150 @@
-import { useState, useEffect } from "react"
-import { useParams } from "react-router-dom"
-import api from "../api/axios"
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import api from '../api/axios'
+import { Card, Btn, Badge, Table, Tr, Td, Input, Select, Alert } from '../components/UI'
 
-const VALID_TRANSITIONS = {
-  activa: ["por_cobrar", "perdida"],
-  por_cobrar: ["finalizada"],
-  finalizada: [],
-  perdida: []
-}
+const TRANSITIONS = { activa:['por_cobrar','perdida'], por_cobrar:['finalizada'], finalizada:[], perdida:[] }
+const STATUS_LABEL = { por_cobrar:'Por cobrar', finalizada:'Finalizada', perdida:'Perdida', activa:'Activa' }
+const STATUS_VARIANT = { por_cobrar:'success', finalizada:'secondary', perdida:'danger', activa:'primary' }
 
 export default function TenderDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [tender, setTender] = useState(null)
   const [products, setProducts] = useState([])
-  const [showAddProduct, setShowAddProduct] = useState(false)
-  const [form, setForm] = useState({ product_id: "", quantity: 1 })
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
+  const [showAdd, setShowAdd] = useState(false)
+  const [form, setForm] = useState({ product_id:'', quantity:1 })
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
-  useEffect(() => {
-    loadTender()
-    api.get("/api/products").then(r => setProducts(r.data))
-  }, [id])
+  useEffect(() => { load(); api.get('/api/products').then(r => setProducts(r.data)) }, [id])
 
-  const loadTender = async () => {
-    const res = await api.get(`/api/tenders/${id}`)
-    setTender(res.data)
-  }
+  const load = async () => { const r = await api.get(`/api/tenders/${id}`); setTender(r.data) }
 
   const handleAddProduct = async (e) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault(); setError('')
     try {
-      await api.post(`/api/tenders/${id}/products`, { product_id: parseInt(form.product_id), quantity: parseInt(form.quantity) })
-      setSuccess("Producto agregado exitosamente")
-      setShowAddProduct(false)
-      setForm({ product_id: "", quantity: 1 })
-      loadTender()
-      setTimeout(() => setSuccess(""), 3000)
-    } catch (err) {
-      setError(err.response?.data?.detail || "Error al agregar producto")
-    }
+      await api.post(`/api/tenders/${id}/products`, { product_id:parseInt(form.product_id), quantity:parseInt(form.quantity) })
+      setSuccess('Producto agregado'); setShowAdd(false); setForm({ product_id:'', quantity:1 }); load()
+      setTimeout(() => setSuccess(''), 3000)
+    } catch(err) { setError(err.response?.data?.detail || 'Error') }
   }
 
-  const handleStatusChange = async (newStatus) => {
-    setError("")
-    try {
-      await api.patch(`/api/tenders/${id}/status`, { status: newStatus })
-      loadTender()
-    } catch (err) {
-      setError(err.response?.data?.detail || "Error al cambiar estado")
-    }
-  }
+  const handleStatus = async (s) => { setError(''); try { await api.patch(`/api/tenders/${id}/status`, { status:s }); load() } catch(err) { setError(err.response?.data?.detail || 'Error') } }
 
-  if (!tender) return <div style={{padding:"24px"}}>Cargando...</div>
+  if (!tender) return <div style={{ padding:'48px', textAlign:'center', color:'var(--slate-400)' }}>Cargando...</div>
 
   const budget = parseFloat(tender.max_budget)
   const total = parseFloat(tender.total_amount)
-  const percentage = budget > 0 ? Math.min((total / budget) * 100, 100) : 0
-  const barColor = percentage > 90 ? "#e74c3c" : percentage > 70 ? "#f39c12" : "#27ae60"
-  const statusColors = { activa:"#27ae60", por_cobrar:"#f39c12", perdida:"#e74c3c", finalizada:"#7f8c8d" }
-  const nextStatuses = VALID_TRANSITIONS[tender.status] || []
+  const pct = budget > 0 ? Math.min((total/budget)*100, 100) : 0
+  const barColor = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#10b981'
+  const next = TRANSITIONS[tender.status] || []
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.cardHeader}>
-          <h2>{tender.title}</h2>
-          <span style={{...styles.badge, background:statusColors[tender.status]}}>{tender.status}</span>
-        </div>
-        <p style={{color:"#666"}}>{tender.description}</p>
-        <p><strong>Cliente:</strong> {tender.client?.name}</p>
+    <div style={s.page}>
+      <button onClick={() => navigate('/')} style={s.back}>← Volver a licitaciones</button>
 
-        <div style={styles.budgetSection}>
-          <div style={styles.budgetRow}>
-            <span>Presupuesto: ${budget.toFixed(2)}</span>
-            <span>Total: ${total.toFixed(2)}</span>
-            <span>{percentage.toFixed(1)}% utilizado</span>
-          </div>
-          <div style={styles.progressBar}>
-            <div style={{...styles.progressFill, width:`${percentage}%`, background:barColor}} />
-          </div>
-        </div>
-
-        {error && <div style={styles.error}>{error}</div>}
-        {success && <div style={styles.success}>{success}</div>}
-
-        {nextStatuses.length > 0 && (
-          <div style={styles.statusSection}>
-            <strong>Cambiar estado:</strong>
-            {nextStatuses.map(s => (
-              <button key={s} style={{...styles.btnStatus, background:statusColors[s]}} onClick={() => handleStatusChange(s)}>
-                → {s}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={styles.card}>
-        <div style={styles.cardHeader}>
-          <h3>Productos</h3>
-          {tender.status === "activa" && (
-            <button style={styles.btnPrimary} onClick={() => setShowAddProduct(!showAddProduct)}>+ Agregar Producto</button>
-          )}
-        </div>
-
-        {showAddProduct && (
-          <form onSubmit={handleAddProduct} style={{marginBottom:"16px"}}> 
-            <select style={styles.input} value={form.product_id} onChange={e => setForm({...form, product_id:e.target.value})} required>
-              <option value="">Seleccionar producto</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name} - ${parseFloat(p.unit_price).toFixed(2)}</option>)}
-            </select>
-            <input style={styles.input} type="number" min="1" placeholder="Cantidad" value={form.quantity} onChange={e => setForm({...form, quantity:e.target.value})} required />
-            <div style={{display:"flex", gap:"8px"}}>
-              <button style={styles.btnPrimary} type="submit">Agregar</button>
-              <button style={styles.btnSecondary} type="button" onClick={() => setShowAddProduct(false)}>Cancelar</button>
+      <div style={s.grid}>
+        <div style={s.main}>
+          <Card style={{ padding:'28px', marginBottom:'20px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'16px' }}>
+              <div>
+                <h1 style={s.title}>{tender.title}</h1>
+                {tender.description && <p style={s.desc}>{tender.description}</p>}
+              </div>
+              <Badge label={tender.status} color={tender.status} />
             </div>
-          </form>
-        )}
+            <div style={s.meta}>
+              <div style={s.metaItem}><span style={s.metaLabel}>Cliente</span><span style={s.metaVal}>{tender.client?.name}</span></div>
+              <div style={s.metaItem}><span style={s.metaLabel}>Presupuesto</span><span style={s.metaVal}>${budget.toLocaleString('es')}</span></div>
+              <div style={s.metaItem}><span style={s.metaLabel}>Total acumulado</span><span style={{ ...s.metaVal, color: pct > 90 ? '#dc2626' : pct > 70 ? '#d97706' : '#16a34a', fontWeight:700 }}>${total.toLocaleString('es')}</span></div>
+            </div>
+            <div style={{ marginTop:'20px' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:'12px', color:'var(--slate-400)', marginBottom:'6px' }}>
+                <span>Presupuesto utilizado</span>
+                <span style={{ fontWeight:700, color:barColor }}>{pct.toFixed(1)}%</span>
+              </div>
+              <div style={{ height:'8px', background:'var(--slate-100)', borderRadius:'4px', overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${pct}%`, background:barColor, borderRadius:'4px', transition:'width 0.4s' }} />
+              </div>
+            </div>
+          </Card>
 
-        <table style={styles.table}>
-          <thead><tr>
-            <th style={styles.th}>Producto</th>
-            <th style={styles.th}>SKU</th>
-            <th style={styles.th}>Cantidad</th>
-            <th style={styles.th}>Precio Unit.</th>
-            <th style={styles.th}>Subtotal</th>
-          </tr></thead>
-          <tbody>
-            {tender.products?.map(p => (
-              <tr key={p.id}>
-                <td style={styles.td}>{p.product?.name}</td>
-                <td style={styles.td}>{p.product?.sku}</td>
-                <td style={styles.td}>{p.quantity}</td>
-                <td style={styles.td}>${parseFloat(p.unit_price).toFixed(2)}</td>
-                <td style={styles.td}>${(parseFloat(p.unit_price) * p.quantity).toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          <Card>
+            <div style={{ padding:'20px 24px', borderBottom:'1px solid var(--slate-100)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'17px', color:'var(--navy-900)' }}>Productos</h2>
+                <p style={{ fontSize:'13px', color:'var(--slate-400)', marginTop:'2px' }}>{tender.products?.length || 0} producto(s) en esta licitación</p>
+              </div>
+              {tender.status === 'activa' && <Btn onClick={() => setShowAdd(!showAdd)}>+ Agregar producto</Btn>}
+            </div>
+            {showAdd && (
+              <div style={{ padding:'20px 24px', borderBottom:'1px solid var(--slate-100)', background:'var(--slate-50)' }}>
+                <Alert msg={error} />
+                <form onSubmit={handleAddProduct} style={{ display:'flex', gap:'12px', alignItems:'flex-end' }}>
+                  <div style={{ flex:2 }}>
+                    <label style={s.label}>Producto</label>
+                    <Select value={form.product_id} onChange={e => setForm({...form, product_id:e.target.value})} required>
+                      <option value=''>Seleccionar...</option>
+                      {products.map(p => <option key={p.id} value={p.id}>{p.name} — ${parseFloat(p.unit_price).toLocaleString('es')}</option>)}
+                    </Select>
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <label style={s.label}>Cantidad</label>
+                    <Input type='number' value={form.quantity} onChange={e => setForm({...form, quantity:e.target.value})} required />
+                  </div>
+                  <Btn type='submit'>Agregar</Btn>
+                  <Btn variant='secondary' onClick={() => setShowAdd(false)}>Cancelar</Btn>
+                </form>
+              </div>
+            )}
+            {success && <div style={{ padding:'12px 24px', background:'#f0fdf4', color:'#16a34a', fontSize:'14px', borderBottom:'1px solid #bbf7d0' }}>{success}</div>}
+            <Table headers={['Producto', 'SKU', 'Cantidad', 'Precio unit.', 'Subtotal']}
+              empty={tender.products?.length === 0 ? 'Sin productos aún.' : null}>
+              {tender.products?.map(p => (
+                <Tr key={p.id}>
+                  <Td><span style={{ fontWeight:600 }}>{p.product?.name}</span></Td>
+                  <Td><span style={{ fontFamily:'monospace', fontSize:'12px', background:'var(--slate-100)', padding:'2px 8px', borderRadius:'4px' }}>{p.product?.sku}</span></Td>
+                  <Td style={{ color:'var(--slate-600)' }}>{p.quantity}</Td>
+                  <Td style={{ color:'var(--slate-600)' }}>${parseFloat(p.unit_price).toLocaleString('es')}</Td>
+                  <Td><span style={{ fontWeight:700, color:'var(--navy-700)' }}>${(parseFloat(p.unit_price)*p.quantity).toLocaleString('es')}</span></Td>
+                </Tr>
+              ))}
+            </Table>
+          </Card>
+        </div>
+
+        <div style={s.sidebar}>
+          <Card style={{ padding:'20px' }}>
+            <h3 style={s.sideTitle}>Cambiar estado</h3>
+            {!error && next.length === 0 && <p style={{ fontSize:'13px', color:'var(--slate-400)' }}>Estado terminal, no hay transiciones disponibles.</p>}
+            <Alert msg={error} />
+            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+              {next.map(s2 => (
+                <Btn key={s2} variant={STATUS_VARIANT[s2]} onClick={() => handleStatus(s2)} style={{ justifyContent:'center', width:'100%' }}>
+                  → {STATUS_LABEL[s2]}
+                </Btn>
+              ))}
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   )
 }
 
-const styles = {
-  container: { padding:"24px", maxWidth:"900px", margin:"0 auto" },
-  card: { background:"white", padding:"24px", borderRadius:"8px", boxShadow:"0 2px 8px rgba(0,0,0,0.1)", marginBottom:"20px" },
-  cardHeader: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"12px" },
-  badge: { padding:"6px 14px", borderRadius:"12px", color:"white", fontSize:"13px", fontWeight:"bold" },
-  budgetSection: { marginTop:"16px" },
-  budgetRow: { display:"flex", gap:"24px", marginBottom:"8px", fontSize:"14px" },
-  progressBar: { height:"12px", background:"#eee", borderRadius:"6px", overflow:"hidden" },
-  progressFill: { height:"100%", borderRadius:"6px", transition:"width 0.3s" },
-  statusSection: { display:"flex", gap:"8px", alignItems:"center", marginTop:"16px", flexWrap:"wrap" },
-  error: { background:"#fee", color:"#c00", padding:"10px", borderRadius:"4px", margin:"12px 0", fontSize:"14px" },
-  success: { background:"#efe", color:"#060", padding:"10px", borderRadius:"4px", margin:"12px 0", fontSize:"14px" },
-  input: { display:"block", width:"100%", padding:"10px", margin:"8px 0", border:"1px solid #ddd", borderRadius:"4px", fontSize:"14px", boxSizing:"border-box" },
-  table: { width:"100%", borderCollapse:"collapse" },
-  th: { padding:"10px 12px", background:"#f5f5f5", textAlign:"left", fontSize:"13px", borderBottom:"2px solid #ddd" },
-  td: { padding:"10px 12px", borderBottom:"1px solid #eee", fontSize:"14px" },
-  btnPrimary: { background:"#1e3a5f", color:"white", border:"none", padding:"10px 20px", borderRadius:"4px", cursor:"pointer", fontSize:"14px" },
-  btnSecondary: { background:"#95a5a6", color:"white", border:"none", padding:"10px 20px", borderRadius:"4px", cursor:"pointer", fontSize:"14px" },
-  btnStatus: { color:"white", border:"none", padding:"8px 16px", borderRadius:"4px", cursor:"pointer", fontSize:"13px" }
+const s = {
+  page: { maxWidth:'1280px', margin:'0 auto', padding:'32px 24px' },
+  back: { background:'none', border:'none', color:'var(--slate-400)', fontSize:'13px', cursor:'pointer', marginBottom:'20px', padding:0, display:'flex', alignItems:'center', gap:'4px' },
+  grid: { display:'grid', gridTemplateColumns:'1fr 260px', gap:'20px', alignItems:'start' },
+  main: {},
+  sidebar: {},
+  title: { fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'24px', color:'var(--navy-900)', marginBottom:'6px' },
+  desc: { fontSize:'14px', color:'var(--slate-400)', marginTop:'4px' },
+  meta: { display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'16px', marginTop:'20px', paddingTop:'20px', borderTop:'1px solid var(--slate-100)' },
+  metaItem: { display:'flex', flexDirection:'column', gap:'4px' },
+  metaLabel: { fontSize:'11px', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--slate-400)' },
+  metaVal: { fontSize:'16px', fontWeight:600, color:'var(--navy-800)' },
+  label: { fontSize:'12px', fontWeight:600, color:'var(--slate-600)', display:'block', marginBottom:'6px' },
+  sideTitle: { fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'15px', color:'var(--navy-900)', marginBottom:'16px' },
 }

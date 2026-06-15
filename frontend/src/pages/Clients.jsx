@@ -1,83 +1,80 @@
 import { useState, useEffect } from "react"
 import api from "../api/axios"
 import { useAuth } from "../context/AuthContext"
+import { PageHeader, Card, Btn, Table, Tr, Td, Input, Alert } from "../components/UI"
 
 export default function Clients() {
   const [clients, setClients] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name:"", email:"", phone:"" })
   const [error, setError] = useState("")
+  const [deleting, setDeleting] = useState(null)
   const { user } = useAuth()
 
-  useEffect(() => {
-    api.get("/api/clients").then(r => setClients(r.data))
-  }, [])
+  useEffect(() => { api.get("/api/clients").then(r => setClients(r.data)) }, [])
 
   const handleCreate = async (e) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault(); setError("")
     try {
       const res = await api.post("/api/clients", form)
-      setClients([...clients, res.data])
-      setShowForm(false)
-      setForm({ name:"", email:"", phone:"" })
-    } catch (err) {
-      setError(err.response?.data?.detail || "Error al crear cliente")
-    }
+      setClients([...clients, res.data]); setShowForm(false); setForm({ name:"", email:"", phone:"" })
+    } catch(err) { setError(err.response?.data?.detail || "Error al crear cliente") }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este cliente?")) return
+    setDeleting(id)
+    try {
+      await api.delete(`/api/clients/${id}`)
+      setClients(clients.filter(c => c.id !== id))
+    } catch(err) { alert(err.response?.data?.detail || "Error al eliminar") }
+    finally { setDeleting(null) }
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2>Clientes</h2>
-        {user?.role === "admin" && <button style={styles.btnPrimary} onClick={() => setShowForm(!showForm)}>+ Nuevo Cliente</button>}
-      </div>
-
+    <div style={s.page}>
+      <PageHeader
+        title="Clientes"
+        subtitle={`${clients.length} cliente${clients.length !== 1 ? "s" : ""} registrado${clients.length !== 1 ? "s" : ""}`}
+        action={user?.role === "admin" && <Btn onClick={() => setShowForm(!showForm)}>+ Nuevo cliente</Btn>}
+      />
       {showForm && (
-        <div style={styles.formCard}>
-          <h3>Crear Cliente</h3>
-          {error && <div style={styles.error}>{error}</div>}
-          <form onSubmit={handleCreate}>
-            <input style={styles.input} placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name:e.target.value})} required />
-            <input style={styles.input} placeholder="Email" value={form.email} onChange={e => setForm({...form, email:e.target.value})} />
-            <input style={styles.input} placeholder="Teléfono" value={form.phone} onChange={e => setForm({...form, phone:e.target.value})} />
-            <div style={{display:"flex", gap:"8px"}}>
-              <button style={styles.btnPrimary} type="submit">Crear</button>
-              <button style={styles.btnSecondary} type="button" onClick={() => setShowForm(false)}>Cancelar</button>
+        <Card style={{ padding:"24px", marginBottom:"24px" }}>
+          <h3 style={s.formTitle}>Nuevo cliente</h3>
+          <Alert msg={error} />
+          <form onSubmit={handleCreate} style={s.formGrid}>
+            <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name:e.target.value})} required />
+            <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email:e.target.value})} />
+            <Input placeholder="Teléfono" value={form.phone} onChange={e => setForm({...form, phone:e.target.value})} />
+            <div />
+            <div style={{ display:"flex", gap:"8px", gridColumn:"1/-1" }}>
+              <Btn type="submit">Crear cliente</Btn>
+              <Btn variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Btn>
             </div>
           </form>
-        </div>
+        </Card>
       )}
-
-      <table style={styles.table}>
-        <thead><tr>
-          <th style={styles.th}>Nombre</th>
-          <th style={styles.th}>Email</th>
-          <th style={styles.th}>Teléfono</th>
-        </tr></thead>
-        <tbody>
+      <Card>
+        <Table headers={user?.role === "admin" ? ["Nombre","Email","Teléfono",""] : ["Nombre","Email","Teléfono"]}
+          empty={clients.length === 0 ? "Sin clientes aún." : null}>
           {clients.map(c => (
-            <tr key={c.id}>
-              <td style={styles.td}>{c.name}</td>
-              <td style={styles.td}>{c.email || "-"}</td>
-              <td style={styles.td}>{c.phone || "-"}</td>
-            </tr>
+            <Tr key={c.id}>
+              <Td><span style={{ fontWeight:600, color:"var(--navy-800)" }}>{c.name}</span></Td>
+              <Td style={{ color:"var(--slate-600)" }}>{c.email || "—"}</Td>
+              <Td style={{ color:"var(--slate-600)" }}>{c.phone || "—"}</Td>
+              {user?.role === "admin" && (
+                <Td>
+                  <Btn variant="danger" onClick={() => handleDelete(c.id)} disabled={deleting === c.id}
+                    style={{ padding:"5px 12px", fontSize:"12px" }}>
+                    {deleting === c.id ? "..." : "Eliminar"}
+                  </Btn>
+                </Td>
+              )}
+            </Tr>
           ))}
-        </tbody>
-      </table>
+        </Table>
+      </Card>
     </div>
   )
 }
-
-const styles = {
-  container: { padding:"24px" },
-  header: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"20px" },
-  formCard: { background:"white", padding:"20px", borderRadius:"8px", boxShadow:"0 2px 8px rgba(0,0,0,0.1)", marginBottom:"20px" },
-  error: { background:"#fee", color:"#c00", padding:"10px", borderRadius:"4px", marginBottom:"12px", fontSize:"14px" },
-  input: { display:"block", width:"100%", padding:"10px", margin:"8px 0", border:"1px solid #ddd", borderRadius:"4px", fontSize:"14px", boxSizing:"border-box" },
-  table: { width:"100%", borderCollapse:"collapse", background:"white", borderRadius:"8px", overflow:"hidden", boxShadow:"0 2px 8px rgba(0,0,0,0.1)" },
-  th: { padding:"12px 16px", background:"#1e3a5f", color:"white", textAlign:"left", fontSize:"14px" },
-  td: { padding:"12px 16px", borderBottom:"1px solid #eee", fontSize:"14px" },
-  btnPrimary: { background:"#1e3a5f", color:"white", border:"none", padding:"10px 20px", borderRadius:"4px", cursor:"pointer", fontSize:"14px" },
-  btnSecondary: { background:"#95a5a6", color:"white", border:"none", padding:"10px 20px", borderRadius:"4px", cursor:"pointer", fontSize:"14px" }
-}
+const s = { page:{ maxWidth:"1280px", margin:"0 auto", padding:"32px 24px" }, formTitle:{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:"18px", color:"var(--navy-900)", marginBottom:"20px" }, formGrid:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" } }
