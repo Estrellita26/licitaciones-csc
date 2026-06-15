@@ -1,10 +1,7 @@
 # Sistema de Gestión de Licitaciones — CSC
 
-<<<<<<< HEAD
-=======
+MVP desarrollado para la prueba técnica de Consultoría y Soluciones Caballero.
 
-
->>>>>>> 5dd8d5a15da668a37aac9acd505633b02352f97e
 ## Despliegue
 
 - **Frontend:** https://zingy-horse-e5a99c.netlify.app
@@ -31,18 +28,18 @@
 ### Requisitos
 - Python 3.11+
 - Node.js 18+
-- PostgreSQL
 
 ### Backend
 
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\Activate.ps1  # Windows
+venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-Crea el archivo `backend/.env`:
+Crea el archivo `backend/.env` basándote en `.env.example`:
+
 ```env
 DATABASE_URL=postgresql://usuario:password@host/dbname
 JWT_SECRET=tu_clave_secreta
@@ -67,6 +64,7 @@ npm install
 ```
 
 Crea el archivo `frontend/.env`:
+
 ```env
 VITE_API_URL=http://localhost:8000
 ```
@@ -77,51 +75,6 @@ npm run dev
 
 Frontend disponible en: http://localhost:5173
 
-## Estructura del Proyecto
-
-```
-licitaciones-csc/
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── dependencies.py
-│   │   │   └── routes/
-│   │   │       ├── auth.py
-│   │   │       ├── users.py
-│   │   │       ├── clients.py
-│   │   │       ├── products.py
-│   │   │       └── tenders.py
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   ├── database.py
-│   │   │   └── security.py
-│   │   ├── models/
-│   │   │   ├── user.py
-│   │   │   ├── client.py
-│   │   │   ├── product.py
-│   │   │   └── tender.py
-│   │   ├── schemas/
-│   │   │   ├── user.py
-│   │   │   ├── client.py
-│   │   │   ├── product.py
-│   │   │   └── tender.py
-│   │   └── services/
-│   │       ├── user_service.py
-│   │       ├── client_service.py
-│   │       ├── product_service.py
-│   │       └── tender_service.py
-│   ├── alembic/
-│   ├── main.py
-│   ├── seed.py
-│   └── requirements.txt
-└── frontend/
-    └── src/
-        ├── api/
-        ├── components/
-        ├── context/
-        └── pages/
-```
-
 ## Endpoints de la API
 
 | Método | Ruta | Descripción | Auth |
@@ -129,8 +82,10 @@ licitaciones-csc/
 | POST | /api/auth/login | Login | Público |
 | GET | /api/users | Listar usuarios | Admin |
 | POST | /api/users | Crear usuario | Admin |
+| DELETE | /api/users/:id | Eliminar usuario | Admin |
 | GET | /api/clients | Listar clientes | Todos |
 | POST | /api/clients | Crear cliente | Admin |
+| DELETE | /api/clients/:id | Eliminar cliente | Admin |
 | GET | /api/products | Listar productos | Todos |
 | POST | /api/products | Crear producto | Admin |
 | GET | /api/tenders | Listar licitaciones | Todos |
@@ -139,7 +94,7 @@ licitaciones-csc/
 | PATCH | /api/tenders/:id/status | Cambiar estado | Todos |
 | POST | /api/tenders/:id/products | Agregar producto | Todos |
 
-## Reglas de Negocio Implementadas
+## Reglas de Negocio
 
 - Solo admins pueden crear usuarios, clientes y productos
 - El presupuesto máximo debe ser mayor a 0
