@@ -1,5 +1,10 @@
 # Sistema de Gestión de Licitaciones — CSC
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 5dd8d5a15da668a37aac9acd505633b02352f97e
 ## Despliegue
 
 - **Frontend:** https://zingy-horse-e5a99c.netlify.app
